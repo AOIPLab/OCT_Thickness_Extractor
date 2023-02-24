@@ -110,7 +110,7 @@ function [results_tot, results_in, results_out, results_cor] = calculate_avg_thi
         segmentation = xlsread(segmentation_path, 'thickness_adjusted');    
         % open and show the image
         image = imshow(imread(image_path));
-        title(obs_folder(i).name);
+        title(obs_folder(i).name, 'Interpreter', 'none');
         
         %add file names to results
         results_tot(i).file_name = obs_folder(i).name;
