@@ -189,8 +189,8 @@ for iii = [1:length(img_folder)]
      
 % Writing outputs to file 
 outfile = fullfile(img_fullpath,['Chemical_OCT_bScans_MATLAB_', datestr(now,'yyyymmdd_HH_MM_SS'), '.xlsx']);
-xlswrite(outfile, HANNAH_outputs,'HANNAH');
-xlswrite(outfile, EMMA_outputs,'EMMA');
+%xlswrite(outfile, HANNAH_outputs,'HANNAH');
+%xlswrite(outfile, EMMA_outputs,'EMMA');
 
 
 end
