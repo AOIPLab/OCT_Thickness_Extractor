@@ -65,11 +65,21 @@ while strcmpi(observers, 'YES')
     % directories '.' and '..')
     obs_folder{obs_count} = temp(~ismember({temp.name}, {'.', '..'}));
     
-    obs_results{obs_count} = calculate_avg_thickness(obs_folder{obs_count}, spacing, thickness);
+    [obs_results_tot{obs_count}, obs_results_in{obs_count}, obs_results_out{obs_count}, obs_results_cor{obs_count}] = calculate_avg_thickness(obs_folder{obs_count}, spacing, thickness);
     
+    % get rid of NaNs
     for i = (1:length(obs_folder{obs_count}))
-        obs_results{1,obs_count}(i).avg_thickness_val_right(isnan(obs_results{1,obs_count}(i).avg_thickness_val_right)) = [];
-        obs_results{1,obs_count}(i).avg_thickness_val_left(isnan(obs_results{1,obs_count}(i).avg_thickness_val_left)) = [];
+        obs_results_tot{1,obs_count}(i).avg_thickness_val_right_tot(isnan(obs_results_tot{1,obs_count}(i).avg_thickness_val_right_tot)) = [];
+        obs_results_tot{1,obs_count}(i).avg_thickness_val_left_tot(isnan(obs_results_tot{1,obs_count}(i).avg_thickness_val_left_tot)) = [];
+        
+        obs_results_in{1,obs_count}(i).avg_thickness_val_right_in(isnan(obs_results_in{1,obs_count}(i).avg_thickness_val_right_in)) = [];
+        obs_results_in{1,obs_count}(i).avg_thickness_val_left_in(isnan(obs_results_in{1,obs_count}(i).avg_thickness_val_left_in)) = [];
+        
+        obs_results_out{1,obs_count}(i).avg_thickness_val_right_out(isnan(obs_results_out{1,obs_count}(i).avg_thickness_val_right_out)) = [];
+        obs_results_out{1,obs_count}(i).avg_thickness_val_left_out(isnan(obs_results_out{1,obs_count}(i).avg_thickness_val_left_out)) = [];
+        
+        obs_results_cor{1,obs_count}(i).avg_thickness_val_right_cor(isnan(obs_results_cor{1,obs_count}(i).avg_thickness_val_right_cor)) = [];
+        obs_results_cor{1,obs_count}(i).avg_thickness_val_left_cor(isnan(obs_results_cor{1,obs_count}(i).avg_thickness_val_left_cor)) = [];
     end
     
     obs_count = obs_count +1;
@@ -77,7 +87,7 @@ while strcmpi(observers, 'YES')
 end
 
 
-function results = calculate_avg_thickness(obs_folder, spacing, thickness, obs_count)
+function [results_tot, results_in, results_out, results_cor] = calculate_avg_thickness(obs_folder, spacing, thickness, obs_count)
     % this for loop goes through each image folder in the grader folder
     % pre-allocate for left
     avg_thickness_val_left = NaN(length(obs_folder), 650);
@@ -85,7 +95,10 @@ function results = calculate_avg_thickness(obs_folder, spacing, thickness, obs_c
     avg_thickness_val_right = NaN(length(obs_folder), 650);
     
     % initializing results struct
-    results = struct([]);
+    results_tot = struct([]);
+    results_in = struct([]);
+    results_out = struct([]);
+    results_cor = struct([]);
     
     
     for i = (1:length(obs_folder))
@@ -98,7 +111,13 @@ function results = calculate_avg_thickness(obs_folder, spacing, thickness, obs_c
         % open and show the image
         image = imshow(imread(image_path));
         title(obs_folder(i).name);
-        results(i).file_name = obs_folder(i).name;
+        
+        %add file names to results
+        results_tot(i).file_name = obs_folder(i).name;
+        results_in(i).file_name = obs_folder(i).name;
+        results_out(i).file_name = obs_folder(i).name;
+        results_cor(i).file_name = obs_folder(i).name;
+        
         % draw seed point
         seed = drawpoint;
         % seed pixel coordinate
@@ -133,16 +152,30 @@ function results = calculate_avg_thickness(obs_folder, spacing, thickness, obs_c
                 thick_left = size(left_of_seed,2);
             end
 
-            values_left = NaN(1,thickness);
+            values_left_tot = NaN(1,thickness);
+            values_left_in = NaN(1,thickness);
+            values_left_out = NaN(1,thickness);
+            values_left_cor = NaN(1,thickness);
+            
             % for loop to get the values for the thickness sections
             for j = (1:thick_left)
-                 values_left(j) = left_of_seed(2,j); % would need to store all values and then choose later which to be reported   
+                 values_left_tot(j) = left_of_seed(2,j);   
+                 values_left_in(j) = left_of_seed(3,j);
+                 values_left_out(j) = left_of_seed(4,j);
+                 values_left_cor(j) = left_of_seed(5,j);
             end 
             left_of_seed(:,1:thick_left) = [];
-            avg_thickness_val_left(i, count_left) = mean(values_left);
+            avg_thickness_val_left_tot(i, count_left) = mean(values_left_tot);
+            avg_thickness_val_left_in(i, count_left) = mean(values_left_in);
+            avg_thickness_val_left_out(i, count_left) = mean(values_left_out);
+            avg_thickness_val_left_cor(i, count_left) = mean(values_left_cor);
+            
             count_left = count_left + 1;
         end
-        results(i).avg_thickness_val_left = avg_thickness_val_left(i,:);
+        results_tot(i).avg_thickness_val_left_tot = avg_thickness_val_left_tot(i,:);
+        results_in(i).avg_thickness_val_left_in = avg_thickness_val_left_in(i,:);
+        results_out(i).avg_thickness_val_left_out = avg_thickness_val_left_out(i,:);
+        results_cor(i).avg_thickness_val_left_cor = avg_thickness_val_left_cor(i,:);
 
 
         % right of the seed
@@ -165,16 +198,29 @@ function results = calculate_avg_thickness(obs_folder, spacing, thickness, obs_c
                 thick_right = size(right_of_seed,2);
             end
 
-            values_right = NaN(1,thickness);
+            values_right_tot = NaN(1,thickness);
+            values_right_in = NaN(1,thickness);
+            values_right_out = NaN(1,thickness);
+            values_right_cor = NaN(1,thickness);
+            
             % for loop to get the values for the thickness sections
             for j = (1:thick_right)
-                 values_right(j) = right_of_seed(2,j); % would need to store all values and then choose later which to be reported   
+                 values_right_tot(j) = right_of_seed(2,j);   
+                 values_right_in(j) = right_of_seed(3,j);
+                 values_right_out(j) = right_of_seed(4,j);
+                 values_right_cor(j) = right_of_seed(5,j); 
             end 
             right_of_seed(:,1:thick_right) = [];
-            avg_thickness_val_right(i, count_right) = mean(values_right);
+            avg_thickness_val_right_tot(i, count_right) = mean(values_right_tot);
+            avg_thickness_val_right_in(i, count_right) = mean(values_right_in);
+            avg_thickness_val_right_out(i, count_right) = mean(values_right_out);
+            avg_thickness_val_right_cor(i, count_right) = mean(values_right_cor);
             count_right = count_right + 1;
         end
-        results(i).avg_thickness_val_right = avg_thickness_val_right(i,:);
+        results_tot(i).avg_thickness_val_right_tot = avg_thickness_val_right_tot(i,:);
+        results_in(i).avg_thickness_val_right_in = avg_thickness_val_right_in(i,:);
+        results_out(i).avg_thickness_val_right_out = avg_thickness_val_right_out(i,:);
+        results_cor(i).avg_thickness_val_right_cor = avg_thickness_val_right_cor(i,:);
 
         print('Lemme see')
 
