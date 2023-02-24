@@ -17,32 +17,18 @@ addpath(genpath(lib_path));
 [LUTfile, LUTpath] = uigetfile('.xlsx','Select the LUT');
 LUT = readcell(fullfile(LUTpath,LUTfile));
 
-% User selects the desired directory containing all images:
-img_fullpath = uigetdir('.','Select directory containing images');
-
-% Find the files within the chosen directory:
-img_folder = dir(img_fullpath);
-
-% Fix the DOS era issue with the dir function (loads in the parent
-% directories '.' and '..')
-img_folder = img_folder(~ismember({img_folder.name}, {'.', '..'}));
-
-% Pre- allocate cell array for all images
-OCT_images = cell(length(img_folder),1);
-
-% Select observer 1 directory
-obs1_fullpath = uigetdir('.','Select directory for observer 1 ');
-
-% Find the files within the chosen directory:
-obs1_folder = dir(obs1_fullpath);
-
-% Fix the DOS era issue with the dir function (loads in the parent
-% directories '.' and '..')
-obs1_folder = obs1_folder(~ismember({obs1_folder.name}, {'.', '..'}));
-
-% initializing results struct
-obs1_results = struct([]);
-
+% % User selects the desired directory containing all images:
+% img_fullpath = uigetdir('.','Select directory containing images');
+% 
+% % Find the files within the chosen directory:
+% img_folder = dir(img_fullpath);
+% 
+% % Fix the DOS era issue with the dir function (loads in the parent
+% % directories '.' and '..')
+% img_folder = img_folder(~ismember({img_folder.name}, {'.', '..'}));
+% 
+% % Pre- allocate cell array for all images
+% OCT_images = cell(length(img_folder),1);
 
 % select units
 list = {'degrees', 'um', 'pixels'};
@@ -57,43 +43,51 @@ thickness = round(str2double(thickness{1}));
 % select metrics to have averaged
 list = {'Total Retinal Thickness','Inner Retinal Thickness','Outer Retinal Thickness','Corroidal Thickness'};
 [indx_metrics,tf2] = listdlg('ListString',list);
-
-obs1_results = calculate_avg_thickness(obs1_folder, obs1_results, spacing, thickness);
     
+% Prompt for pop-up asking if you want to add observers
+obs_count = 1;
+observers = 'YES';
+while strcmpi(observers, 'YES')
+      observers = questdlg('Add an observer?', ...
+      'Add observer', ...
+      'YES', 'NO', 'NO');
 
-% probs put this in a function as well and just have a global counter going
-% on to keep track of what number grader we are on
-% Prompt for pop-up asking if you have more than one observer
-observers = questdlg('Add an observer?', ...
-  'Add observer', ...
-  'YES', 'NO', 'NO');
+    if strcmpi(observers, 'NO')
+    elseif strcmpi(observers, 'YES')
+    % Select observer 2 directory
+    obs_fullpath{obs_count} = uigetdir('.','Select directory for observer ');
 
-if strcmpi(observers, 'NO')
-elseif strcmpi(observers, 'YES')
-% Select observer 2 directory
-obs2_fullpath = uigetdir('.','Select directory for observer 2 ');
+    % Find the files within the chosen directory:
+    obs_folder{obs_count} = dir(obs_fullpath{obs_count});
+    temp = obs_folder{obs_count};
 
-% Find the files within the chosen directory:
-obs2_folder = dir(obs2_fullpath);
-
-% Fix the DOS era issue with the dir function (loads in the parent
-% directories '.' and '..')
-obs2_folder = obs2_folder(~ismember({obs2_folder.name}, {'.', '..'}));
-
-% initializing results struct
-obs2_results = struct([]);
-
+    % Fix the DOS era issue with the dir function (loads in the parent
+    % directories '.' and '..')
+    obs_folder{obs_count} = temp(~ismember({temp.name}, {'.', '..'}));
+    
+    obs_results{obs_count} = calculate_avg_thickness(obs_folder{obs_count}, spacing, thickness);
+    
+    for i = (1:length(obs_folder{obs_count}))
+        obs_results{1,obs_count}(i).avg_thickness_val_right(isnan(results{1,obs_count}(i).avg_thickness_val_right)) = [];
+        obs_results{1,obs_count}(i).avg_thickness_val_left(isnan(obs_results{1,obs_count}(i).avg_thickness_val_left)) = [];
+    end
+    
+    obs_count = obs_count +1;
+    end
 end
 
 
-function obs_results = calculate_avg_thickness(obs_folder, obs_results, spacing, thickness)
-    % possibly put this in a function so that when each new grader is added
-    % this gets called again
+function results = calculate_avg_thickness(obs_folder, spacing, thickness, obs_count)
     % this for loop goes through each image folder in the grader folder
     % pre-allocate for left
     avg_thickness_val_left = NaN(length(obs_folder), 650);
     % pre-allocate for right
     avg_thickness_val_right = NaN(length(obs_folder), 650);
+    
+    % initializing results struct
+    results = struct([]);
+    
+    
     for i = (1:length(obs_folder))
         % get the correct path of where the image and segmentation is
         folder_path = [obs_folder(i).folder '\' obs_folder(i).name];
@@ -103,6 +97,8 @@ function obs_results = calculate_avg_thickness(obs_folder, obs_results, spacing,
         segmentation = xlsread(segmentation_path, 'thickness_adjusted');    
         % open and show the image
         image = imshow(imread(image_path));
+        title(obs_folder(i).name);
+        results(i).file_name = obs_folder(i).name;
         % draw seed point
         seed = drawpoint;
         % seed pixel coordinate
@@ -110,8 +106,7 @@ function obs_results = calculate_avg_thickness(obs_folder, obs_results, spacing,
 
         % the segmentation matrix split up into left and right of the seed
         left_of_seed = segmentation(:,1:seed_px-1);
-        % flip the matrix so that the left of the seed can be read left to
-        % right
+        % flip the matrix so that the left of the seed can be read left to right
         left_of_seed = flip(left_of_seed,2);
         right_of_seed = segmentation(:,seed_px+1:end);
 
@@ -147,7 +142,7 @@ function obs_results = calculate_avg_thickness(obs_folder, obs_results, spacing,
             avg_thickness_val_left(i, count_left) = mean(values_left);
             count_left = count_left + 1;
         end
-        obs_results(i).avg_thickness_val_left = avg_thickness_val_left(i,:);
+        results(i).avg_thickness_val_left = avg_thickness_val_left(i,:);
 
 
         % right of the seed
@@ -179,7 +174,7 @@ function obs_results = calculate_avg_thickness(obs_folder, obs_results, spacing,
             avg_thickness_val_right(i, count_right) = mean(values_right);
             count_right = count_right + 1;
         end
-        obs_results(i).avg_thickness_val_right = avg_thickness_val_right(i,:);
+        results(i).avg_thickness_val_right = avg_thickness_val_right(i,:);
 
         print('Lemme see')
 
