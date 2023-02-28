@@ -85,23 +85,11 @@ while strcmpi(observers, 'YES')
     
     [obs_results_tot{obs_count}, obs_results_in{obs_count}, obs_results_out{obs_count}, obs_results_cor{obs_count}] = calculate_avg_thickness(obs_folder{obs_count}, spacing, thickness);
     
-    % get rid of NaNs
-    for i = (1:length(obs_folder{obs_count}))
-        obs_results_tot{1,obs_count}(i).avg_thickness_val_right_tot(isnan(obs_results_tot{1,obs_count}(i).avg_thickness_val_right_tot)) = [];
-        obs_results_tot{1,obs_count}(i).avg_thickness_val_left_tot(isnan(obs_results_tot{1,obs_count}(i).avg_thickness_val_left_tot)) = [];
-        
-        obs_results_in{1,obs_count}(i).avg_thickness_val_right_in(isnan(obs_results_in{1,obs_count}(i).avg_thickness_val_right_in)) = [];
-        obs_results_in{1,obs_count}(i).avg_thickness_val_left_in(isnan(obs_results_in{1,obs_count}(i).avg_thickness_val_left_in)) = [];
-        
-        obs_results_out{1,obs_count}(i).avg_thickness_val_right_out(isnan(obs_results_out{1,obs_count}(i).avg_thickness_val_right_out)) = [];
-        obs_results_out{1,obs_count}(i).avg_thickness_val_left_out(isnan(obs_results_out{1,obs_count}(i).avg_thickness_val_left_out)) = [];
-        
-        obs_results_cor{1,obs_count}(i).avg_thickness_val_right_cor(isnan(obs_results_cor{1,obs_count}(i).avg_thickness_val_right_cor)) = [];
-        obs_results_cor{1,obs_count}(i).avg_thickness_val_left_cor(isnan(obs_results_cor{1,obs_count}(i).avg_thickness_val_left_cor)) = [];
-    end
+    obs_results_tot{obs_count}.avg_thickness_total = [obs_results_tot{obs_count}.avg_thickness_val_left_tot, obs_results_tot{obs_count}.avg_thickness_val_right_tot];
     
     obs_count = obs_count +1;
     end
+    
 end
 
 
@@ -164,129 +152,84 @@ function [results_tot, results_in, results_out, results_cor] = calculate_avg_thi
         right_range = seed_px + iteration2-1;
         
         % find actual 0
-        seed_px = (left_range + right_range)/2;
+        % needs to be an integer so round
+        seed_px = round((left_range + right_range)/2);
 
         % the segmentation matrix split up into left and right of the seed
         left_of_seed = segmentation(:,1:seed_px);
         % flip the matrix so that the left of the seed can be read left to right
         left_of_seed = flip(left_of_seed,2);
         right_of_seed = segmentation(:,seed_px:end);
-
-
-        % right of seed
-        count2 = 1;
+        
         thick = floor(thickness/2);
-        for z = spacing:spacing:size(right_of_seed,2)
-            count = 1;
-            t_val(count) = right_of_seed(1,z);
-            count = count + 1; 
-            for y = 1:thick
-                t_val(count) = right_of_seed(1,z-y);
-                count = count + 1;
-                t_val(count) = right_of_seed(1,z+y);
-                count = count + 1; 
-            end
-            t_avg(count2) = mean(t_val);  
-            count2 = count2 +1;
-        end
-        
-        
-        % should put this as a function and have left/right_of_seed as an
-        % input
-        % left of the seed
-        count_left = 1;
-        while size(left_of_seed,2) > 0
-
-            if spacing > 0
-                if spacing > size(left_of_seed,2)
-                    left_of_seed(:,1:size(left_of_seed,2)) = [];
-                else
-                    left_of_seed(:,1:spacing) = [];
-                end
-            end
-
-
-            % if less than the thickness is left, just use what is left
-            if thickness < size(left_of_seed,2)
-                thick_left = thickness;
-            else
-                thick_left = size(left_of_seed,2);
-            end
-
-            values_left_tot = NaN(1,thickness);
-            values_left_in = NaN(1,thickness);
-            values_left_out = NaN(1,thickness);
-            values_left_cor = NaN(1,thickness);
-            
-            % for loop to get the values for the thickness sections
-            for j = (1:thick_left)
-                 values_left_tot(j) = left_of_seed(2,j);   
-                 values_left_in(j) = left_of_seed(3,j);
-                 values_left_out(j) = left_of_seed(4,j);
-                 values_left_cor(j) = left_of_seed(5,j);
-            end 
-            left_of_seed(:,1:thick_left) = [];
-            avg_thickness_val_left_tot(i, count_left) = mean(values_left_tot);
-            avg_thickness_val_left_in(i, count_left) = mean(values_left_in);
-            avg_thickness_val_left_out(i, count_left) = mean(values_left_out);
-            avg_thickness_val_left_cor(i, count_left) = mean(values_left_cor);
-            
-            count_left = count_left + 1;
-        end
-        results_tot(i).avg_thickness_val_left_tot = avg_thickness_val_left_tot(i,:);
-        results_in(i).avg_thickness_val_left_in = avg_thickness_val_left_in(i,:);
-        results_out(i).avg_thickness_val_left_out = avg_thickness_val_left_out(i,:);
-        results_cor(i).avg_thickness_val_left_cor = avg_thickness_val_left_cor(i,:);
-
-
-        % right of the seed
-        count_right = 1;
-        while size(right_of_seed,2) > 0
-
-            if spacing > 0
-                if spacing > size(right_of_seed,2)
-                    right_of_seed(:,1:size(right_of_seed,2)) = [];
-                else
-                    right_of_seed(:,1:spacing) = [];
-                end
-            end
-
-
-            % if less than the thickness is left, just use what is left
-            if thickness < size(right_of_seed,2)
-                thick_right = thickness;
-            else
-                thick_right = size(right_of_seed,2);
-            end
-
-            values_right_tot = NaN(1,thickness);
-            values_right_in = NaN(1,thickness);
-            values_right_out = NaN(1,thickness);
-            values_right_cor = NaN(1,thickness);
-            
-            % for loop to get the values for the thickness sections
-            for j = (1:thick_right)
-                 values_right_tot(j) = right_of_seed(2,j);   
-                 values_right_in(j) = right_of_seed(3,j);
-                 values_right_out(j) = right_of_seed(4,j);
-                 values_right_cor(j) = right_of_seed(5,j); 
-            end 
-            right_of_seed(:,1:thick_right) = [];
-            avg_thickness_val_right_tot(i, count_right) = mean(values_right_tot);
-            avg_thickness_val_right_in(i, count_right) = mean(values_right_in);
-            avg_thickness_val_right_out(i, count_right) = mean(values_right_out);
-            avg_thickness_val_right_cor(i, count_right) = mean(values_right_cor);
-            count_right = count_right + 1;
-        end
-        results_tot(i).avg_thickness_val_right_tot = avg_thickness_val_right_tot(i,:);
-        results_in(i).avg_thickness_val_right_in = avg_thickness_val_right_in(i,:);
-        results_out(i).avg_thickness_val_right_out = avg_thickness_val_right_out(i,:);
-        results_cor(i).avg_thickness_val_right_cor = avg_thickness_val_right_cor(i,:);
-
-%         print('Lemme see')
+        [results_tot, results_in, results_out, results_cor] = calculate(thick, spacing, left_of_seed, 'left', i, results_tot, results_in, results_out, results_cor);
+        [results_tot, results_in, results_out, results_cor] = calculate(thick, spacing, right_of_seed, 'right', i, results_tot, results_in, results_out, results_cor);
 
     end
 end
+     
+
+% right of seed
+function [results_tot, results_in, results_out, results_cor] = calculate(thick, spacing, matrix, LorR, i, results_tot, results_in, results_out, results_cor)
+        count2 = 1;
+        for z = spacing:spacing:size(matrix,2)
+            count = 1;
+            values_total(count) = matrix(2,z);
+            values_inner(count) = matrix(3,z);
+            values_outer(count) = matrix(4,z);
+            values_corroidal(count) = matrix(5,z);
+            count = count + 1; 
+            for y = 1:thick
+                if (z-y) < 1 %check to make sure there is enough data to fit in the window
+                    disp(y)
+                    disp(z)
+                    continue
+                else
+                    values_total(count) = matrix(2,z-y);
+                    values_inner(count) = matrix(3,z-y);
+                    values_outer(count) = matrix(4,z-y);
+                    values_corroidal(count) = matrix(5,z-y);
+                    count = count + 1;
+                end
+                if (z+y) > size(matrix,2) %check to make sure there is enough data to fit in the window
+                    disp(y)
+                    disp(z)
+                    continue
+                else
+                    values_total(count) = matrix(2,z+y);
+                    values_inner(count) = matrix(3,z+y);
+                    values_outer(count) = matrix(4,z+y);
+                    values_corroidal(count) = matrix(5,z+y);
+                    count = count + 1; 
+                end
+                
+            end
+            values_total_avg(count2) = mean(values_total);
+            values_inner_avg(count2) = mean(values_inner);
+            values_outer_avg(count2) = mean(values_outer);
+            values_corroidal_avg(count2) = mean(values_corroidal);
+            count2 = count2 +1;
+        end
+        
+        % add results to the struct
+        if strcmpi(LorR, 'right')
+            results_tot(i).avg_thickness_val_right_tot = values_total_avg;
+            results_in(i).avg_thickness_val_right_in = values_inner_avg;
+            results_out(i).avg_thickness_val_right_out = values_outer_avg;
+            results_cor(i).avg_thickness_val_right_cor = values_corroidal_avg;
+        else
+            % flip left results back to read left to right and negate to
+            % indicate they are from the left
+            results_tot(i).avg_thickness_val_left_tot = -flip(values_total_avg,2);
+            results_in(i).avg_thickness_val_left_in = -flip(values_inner_avg,2);
+            results_out(i).avg_thickness_val_left_out = -flip(values_outer_avg,2);
+            results_cor(i).avg_thickness_val_left_cor = -flip(values_corroidal_avg,2);
+        end
+        
+end
+        
+
+
 
 
 
