@@ -5,6 +5,7 @@ clear all
 close all
 clc
 
+
 %% Load in the lib folder 
 mfilefullpath = matlab.desktop.editor.getActiveFilename; 
 mfileshortpath = erase(mfilefullpath, 'Thickness_Extractor_V1.m'); 
@@ -17,28 +18,45 @@ addpath(genpath(lib_path));
 [LUTfile, LUTpath] = uigetfile('.xlsx','Select the LUT');
 LUT = readcell(fullfile(LUTpath,LUTfile));
 
-% % User selects the desired directory containing all images:
-% img_fullpath = uigetdir('.','Select directory containing images');
-% 
-% % Find the files within the chosen directory:
-% img_folder = dir(img_fullpath);
-% 
-% % Fix the DOS era issue with the dir function (loads in the parent
-% % directories '.' and '..')
-% img_folder = img_folder(~ismember({img_folder.name}, {'.', '..'}));
-% 
-% % Pre- allocate cell array for all images
-% OCT_images = cell(length(img_folder),1);
-
 % select units
-list = {'degrees', 'um', 'pixels'};
-[indx_unit,tf1] = listdlg('ListString',list);
+list = {'degrees', 'microns', 'pixels'};
+[indx_unit,tf1] = listdlg('PromptString','Select Lateral Units', 'SelectionMode', 'single', 'ListString', list);
 
+if tf1 == 1
+    if indx_unit ==1
+        unit = ' (degrees)';
+    elseif indx_unit == 2
+        unit = ' (microns)';
+    elseif indx_unit == 3
+        unit = ' (pixels)';
+    end
+end
+
+m1 = 'Please enter desired SPACING ';
+m2 = 'Please enter the desired WINDOW ';
+message1 = strcat(m1, unit);
+message2 = strcat(m2, unit);
 % specify spacing and thickness
-spacing = inputdlg('Please enter the desired SPACING', 'Set Spacing');
-spacing = round(str2double(spacing{1}));
-thickness = inputdlg('Please enter the desired SAMPLING THICKNESS', 'Set Thickness');
-thickness = round(str2double(thickness{1}));
+spacing = inputdlg(message1, 'Set Spacing');
+spacing = str2double(spacing{1});
+thickness = inputdlg(message2, 'Set Sampling Thickness');
+thickness = str2double(thickness{1});
+
+% loop to make sure no window overlap
+while spacing < (thickness/2)
+    warning('Window overlap present with current spacing and window selections');
+    contin = questdlg('WARNING: Window overlap with current spacing and window selections Continue with current selection?', ...
+      '', ...
+      'YES', 'NO', 'NO');
+  if strcmpi(contin, 'YES')
+    break;
+  else
+    spacing = inputdlg(message1, 'Set Spacing');
+    spacing = str2double(spacing{1});
+    thickness = inputdlg(message2, 'Set Sampling Thickness');
+    thickness = str2double(thickness{1});
+  end
+end
 
 % select metrics to have averaged
 list = {'Total Retinal Thickness','Inner Retinal Thickness','Outer Retinal Thickness','Corroidal Thickness'};
@@ -118,18 +136,61 @@ function [results_tot, results_in, results_out, results_cor] = calculate_avg_thi
         results_out(i).file_name = obs_folder(i).name;
         results_cor(i).file_name = obs_folder(i).name;
         
+        
+        % find approximate 0 with seed
         % draw seed point
         seed = drawpoint;
         % seed pixel coordinate
         seed_px = round(seed.Position(1));
+        
+        % find actual 0 from seed reference point
+        % look to the left of the seed for the edge
+        iteration = 0;
+        cor_val1 = segmentation(5,seed_px);
+        while cor_val1 == 0
+            iteration = iteration+1;
+            cor_val1 = segmentation(5,seed_px-iteration);   
+        end
+        % look to the right of the seed for the edge
+        iteration2 = 0;
+        cor_val2 = segmentation(5,seed_px);
+        while cor_val2 == 0
+            iteration2 = iteration2+1;
+            cor_val2 = segmentation(5,seed_px+iteration2);
+        end
+        
+        % find the range of the ONH
+        left_range = seed_px - iteration+1;
+        right_range = seed_px + iteration2-1;
+        
+        % find actual 0
+        seed_px = (left_range + right_range)/2;
 
         % the segmentation matrix split up into left and right of the seed
-        left_of_seed = segmentation(:,1:seed_px-1);
+        left_of_seed = segmentation(:,1:seed_px);
         % flip the matrix so that the left of the seed can be read left to right
         left_of_seed = flip(left_of_seed,2);
-        right_of_seed = segmentation(:,seed_px+1:end);
+        right_of_seed = segmentation(:,seed_px:end);
 
 
+        % right of seed
+        count2 = 1;
+        thick = floor(thickness/2);
+        for z = spacing:spacing:size(right_of_seed,2)
+            count = 1;
+            t_val(count) = right_of_seed(1,z);
+            count = count + 1; 
+            for y = 1:thick
+                t_val(count) = right_of_seed(1,z-y);
+                count = count + 1;
+                t_val(count) = right_of_seed(1,z+y);
+                count = count + 1; 
+            end
+            t_avg(count2) = mean(t_val);  
+            count2 = count2 +1;
+        end
+        
+        
         % should put this as a function and have left/right_of_seed as an
         % input
         % left of the seed
@@ -222,7 +283,7 @@ function [results_tot, results_in, results_out, results_cor] = calculate_avg_thi
         results_out(i).avg_thickness_val_right_out = avg_thickness_val_right_out(i,:);
         results_cor(i).avg_thickness_val_right_cor = avg_thickness_val_right_cor(i,:);
 
-        print('Lemme see')
+%         print('Lemme see')
 
     end
 end
