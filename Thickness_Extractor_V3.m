@@ -72,28 +72,48 @@ while strcmpi(observers, 'YES')
 
     if strcmpi(observers, 'NO')
     elseif strcmpi(observers, 'YES')
-    % Select observer 2 directory
-    obs_fullpath{obs_count} = uigetdir('.','Select directory for observer ');
+        % Select observer 2 directory
+        obs_fullpath{obs_count} = uigetdir('.','Select directory for observer ');
+    
+        % Find the files within the chosen directory:
+        obs_folder{obs_count} = dir(obs_fullpath{obs_count});
+        temp = obs_folder{obs_count};
+    
+        % Fix the DOS era issue with the dir function (loads in the parent
+        % directories '.' and '..')
+        obs_folder{obs_count} = temp(~ismember({temp.name}, {'.', '..'}));
+        
+        % call function
+        [obs_results_tot{obs_count}, obs_results_in{obs_count}, obs_results_out{obs_count}, obs_results_cor{obs_count}] = calculate_avg_thickness(obs_folder{obs_count}, spacing, thickness, LUT, indx_unit);
+        
+        for v = 1:length(obs_folder{1,1})
+            % combine left and right values for total
+            obs_results_tot{1,obs_count}(v).avg_thickness_total = [obs_results_tot{obs_count}(v).avg_thickness_val_left_tot, obs_results_tot{obs_count}(v).avg_thickness_val_right_tot];
+            obs_results_tot{1,obs_count}(v).locations_total = [obs_results_tot{obs_count}(v).locations_left, obs_results_tot{obs_count}(v).locations_right];
+            
+            % combine left and right values for inner
+            obs_results_in{1,obs_count}(v).avg_thickness_total = [obs_results_in{obs_count}(v).avg_thickness_val_left_in, obs_results_in{obs_count}(v).avg_thickness_val_right_in];
+            obs_results_in{1,obs_count}(v).locations_total = [obs_results_in{obs_count}(v).locations_left, obs_results_in{obs_count}(v).locations_right];
 
-    % Find the files within the chosen directory:
-    obs_folder{obs_count} = dir(obs_fullpath{obs_count});
-    temp = obs_folder{obs_count};
+            % combine left and right values for outer
+            obs_results_out{1,obs_count}(v).avg_thickness_total = [obs_results_out{obs_count}(v).avg_thickness_val_left_out, obs_results_out{obs_count}(v).avg_thickness_val_right_out];
+            obs_results_out{1,obs_count}(v).locations_total = [obs_results_out{obs_count}(v).locations_left, obs_results_out{obs_count}(v).locations_right];
 
-    % Fix the DOS era issue with the dir function (loads in the parent
-    % directories '.' and '..')
-    obs_folder{obs_count} = temp(~ismember({temp.name}, {'.', '..'}));
-    
-    [obs_results_tot{obs_count}, obs_results_in{obs_count}, obs_results_out{obs_count}, obs_results_cor{obs_count}] = calculate_avg_thickness(obs_folder{obs_count}, spacing, thickness);
-    
-    obs_results_tot{obs_count}.avg_thickness_total = [obs_results_tot{obs_count}.avg_thickness_val_left_tot, obs_results_tot{obs_count}.avg_thickness_val_right_tot];
-    
-    obs_count = obs_count +1;
+            % combine left and right values for corroidal
+            obs_results_cor{1,obs_count}(v).avg_thickness_total = [obs_results_cor{obs_count}(v).avg_thickness_val_left_cor, obs_results_cor{obs_count}(v).avg_thickness_val_right_cor];
+            obs_results_cor{1,obs_count}(v).locations_total = [obs_results_cor{obs_count}(v).locations_left, obs_results_cor{obs_count}(v).locations_right];
+
+        end
+
+        % format output results here
+       
+        obs_count = obs_count +1;
     end
     
 end
 
 
-function [results_tot, results_in, results_out, results_cor] = calculate_avg_thickness(obs_folder, spacing, thickness, obs_count)
+function [results_tot, results_in, results_out, results_cor] = calculate_avg_thickness(obs_folder, spacing, thickness, LUT, unit)
     % this for loop goes through each image folder in the grader folder
     % pre-allocate for left
     avg_thickness_val_left = NaN(length(obs_folder), 650);
@@ -123,7 +143,24 @@ function [results_tot, results_in, results_out, results_cor] = calculate_avg_thi
         results_in(i).file_name = obs_folder(i).name;
         results_out(i).file_name = obs_folder(i).name;
         results_cor(i).file_name = obs_folder(i).name;
-        
+
+        % find the index of the lateral scale for the specific scan from
+        % the LUT file
+        for index = 1:length(LUT)
+            trigger = find(strcmp(LUT{index,1},(obs_folder(i).name)));
+            if length(trigger) == 1
+                break
+            end
+        end
+
+        % set the lateral scale based on the unit
+        if unit == 1 % degrees
+            lateral_scale = LUT{index, 2};
+        elseif unit == 2 % microns
+            lateral_scale = LUT{index, 3};
+        elseif unit == 3 % pixels
+            lateral_scale = 1;
+        end
         
         % find approximate 0 with seed
         % draw seed point
@@ -160,72 +197,109 @@ function [results_tot, results_in, results_out, results_cor] = calculate_avg_thi
         % flip the matrix so that the left of the seed can be read left to right
         left_of_seed = flip(left_of_seed,2);
         right_of_seed = segmentation(:,seed_px:end);
-        
-        thick = floor(thickness/2);
-        [results_tot, results_in, results_out, results_cor] = calculate(thick, spacing, left_of_seed, 'left', i, results_tot, results_in, results_out, results_cor);
-        [results_tot, results_in, results_out, results_cor] = calculate(thick, spacing, right_of_seed, 'right', i, results_tot, results_in, results_out, results_cor);
+       
+        [results_tot, results_in, results_out, results_cor] = calculate(thickness, spacing, left_of_seed, 'left', i, results_tot, results_in, results_out, results_cor, lateral_scale);
+        [results_tot, results_in, results_out, results_cor] = calculate(thickness, spacing, right_of_seed, 'right', i, results_tot, results_in, results_out, results_cor, lateral_scale);
 
     end
 end
      
 
-% right of seed
-function [results_tot, results_in, results_out, results_cor] = calculate(thick, spacing, matrix, LorR, i, results_tot, results_in, results_out, results_cor)
-        count2 = 1;
-        for z = spacing:spacing:size(matrix,2)
-            count = 1;
-            values_total(count) = matrix(2,z);
-            values_inner(count) = matrix(3,z);
-            values_outer(count) = matrix(4,z);
-            values_corroidal(count) = matrix(5,z);
-            count = count + 1; 
-            for y = 1:thick
-                if (z-y) < 1 %check to make sure there is enough data to fit in the window
-                    disp(y)
-                    disp(z)
-                    continue
-                else
-                    values_total(count) = matrix(2,z-y);
-                    values_inner(count) = matrix(3,z-y);
-                    values_outer(count) = matrix(4,z-y);
-                    values_corroidal(count) = matrix(5,z-y);
-                    count = count + 1;
-                end
-                if (z+y) > size(matrix,2) %check to make sure there is enough data to fit in the window
-                    disp(y)
-                    disp(z)
-                    continue
-                else
-                    values_total(count) = matrix(2,z+y);
-                    values_inner(count) = matrix(3,z+y);
-                    values_outer(count) = matrix(4,z+y);
-                    values_corroidal(count) = matrix(5,z+y);
-                    count = count + 1; 
-                end
-                
+% 
+function [results_tot, results_in, results_out, results_cor] = calculate(thickness, spacing, matrix, LorR, i, results_tot, results_in, results_out, results_cor, lateral_scale)
+
+    % convert spacing and window to pixels
+    spacing = round(spacing * lateral_scale);
+    thickness = round(thickness * lateral_scale);
+   
+    if mod(thickness,2) % check if odd
+        thick_l = floor(thickness/2);
+        thick_r = floor(thickness/2);
+    else
+        thick_l = floor(thickness/2)-1;
+        thick_r = floor(thickness/2); % one additional on the right if even
+    end
+
+    count2 = 1;
+    locations = spacing:spacing:size(matrix,2);
+    locations = locations / lateral_scale;
+    for z = spacing:spacing:size(matrix,2)
+        count = 1;
+        values_total(count) = matrix(2,z);
+        values_inner(count) = matrix(3,z);
+        values_outer(count) = matrix(4,z);
+        values_corroidal(count) = matrix(5,z);
+        count = count + 1; 
+        % go through to get the data on both sides of the sampling
+        % point
+        for y = 1:thick_l
+            values_total(count) = matrix(2,z-y);
+            values_inner(count) = matrix(3,z-y);
+            values_outer(count) = matrix(4,z-y);
+            values_corroidal(count) = matrix(5,z-y);
+            count = count + 1;
+        end
+        for q = 1:thick_r
+            % attempt to figure out if not enough data for the whole window
+            if (z+q) > size(matrix, 2)
+                diff_pos = z+q;
+                not_enough = diff_pos - size(matrix, 2);
+                incomplete_window = thickness-not_enough;
+
+            else
+                values_total(count) = matrix(2,z+q);
+                values_inner(count) = matrix(3,z+q);
+                values_outer(count) = matrix(4,z+q);
+                values_corroidal(count) = matrix(5,z+q);
+                count = count + 1; 
+                incomplete_window = NaN;
             end
-            values_total_avg(count2) = mean(values_total);
-            values_inner_avg(count2) = mean(values_inner);
-            values_outer_avg(count2) = mean(values_outer);
-            values_corroidal_avg(count2) = mean(values_corroidal);
-            count2 = count2 +1;
+            
         end
-        
-        % add results to the struct
-        if strcmpi(LorR, 'right')
-            results_tot(i).avg_thickness_val_right_tot = values_total_avg;
-            results_in(i).avg_thickness_val_right_in = values_inner_avg;
-            results_out(i).avg_thickness_val_right_out = values_outer_avg;
-            results_cor(i).avg_thickness_val_right_cor = values_corroidal_avg;
-        else
-            % flip left results back to read left to right and negate to
-            % indicate they are from the left
-            results_tot(i).avg_thickness_val_left_tot = -flip(values_total_avg,2);
-            results_in(i).avg_thickness_val_left_in = -flip(values_inner_avg,2);
-            results_out(i).avg_thickness_val_left_out = -flip(values_outer_avg,2);
-            results_cor(i).avg_thickness_val_left_cor = -flip(values_corroidal_avg,2);
-        end
-        
+        values_total_avg(count2) = mean(values_total);
+        values_inner_avg(count2) = mean(values_inner);
+        values_outer_avg(count2) = mean(values_outer);
+        values_corroidal_avg(count2) = mean(values_corroidal);
+        count2 = count2 +1;
+    end
+    
+    % add results to the struct
+    if strcmpi(LorR, 'right')
+        results_tot(i).avg_thickness_val_right_tot = values_total_avg;
+        results_in(i).avg_thickness_val_right_in = values_inner_avg;
+        results_out(i).avg_thickness_val_right_out = values_outer_avg;
+        results_cor(i).avg_thickness_val_right_cor = values_corroidal_avg;
+
+        results_tot(i).locations_right = locations;
+        results_in(i).locations_right = locations;
+        results_out(i).locations_right = locations;
+        results_cor(i).locations_right = locations;
+
+        results_tot(i).incomplete_window_right = incomplete_window;
+        results_in(i).incomplete_window_right = incomplete_window;
+        results_out(i).incomplete_window_right = incomplete_window;
+        results_cor(i).incomplete_window_right = incomplete_window;
+
+    else
+        % flip left results back to read left to right and negate to
+        % indicate they are from the left
+        results_tot(i).avg_thickness_val_left_tot = flip(values_total_avg,2);
+        results_in(i).avg_thickness_val_left_in = flip(values_inner_avg,2);
+        results_out(i).avg_thickness_val_left_out = flip(values_outer_avg,2);
+        results_cor(i).avg_thickness_val_left_cor = flip(values_corroidal_avg,2);
+
+        results_tot(i).locations_left = -flip(locations);
+        results_in(i).locations_left = -flip(locations);
+        results_out(i).locations_left = -flip(locations);
+        results_cor(i).locations_left = -flip(locations);
+
+        results_tot(i).incomplete_window_left = incomplete_window;
+        results_in(i).incomplete_window_left = incomplete_window;
+        results_out(i).incomplete_window_left = incomplete_window;
+        results_cor(i).incomplete_window_left = incomplete_window;
+
+    end
+
 end
         
 
