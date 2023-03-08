@@ -1,4 +1,4 @@
-% Thickness Extractor
+% OCT Thickness Extractor
 % Jenna's Take
 
 clear all
@@ -115,6 +115,7 @@ while strcmpi(observers, 'YES')
         end
 
         % format output results here
+        print("output")
        
         % add to observer count for indexing
         obs_count = obs_count +1;
@@ -268,6 +269,7 @@ function [results_tot, results_in, results_out, results_cor] = calculate_avg_thi
                 pos_diff = sampling_point + right_window_p;
                 not_enough = pos_diff - size(matrix, 2);
                 incomplete_window = window-not_enough;
+                incomplete_window = incomplete_window / lateral_scale; % comvert from pixels to desired units
                 
             else % go through to get thickness values to the right of the sampling point
                 values_total(window_count) = matrix(2, sampling_point + right_window_p);
