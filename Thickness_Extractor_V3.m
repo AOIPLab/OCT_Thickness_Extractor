@@ -25,13 +25,6 @@ clear all
 close all
 clc
 
-
-%% Load in the lib folder 
-mfilefullpath = matlab.desktop.editor.getActiveFilename; 
-mfileshortpath = erase(mfilefullpath, 'Thickness_Extractor_V1.m'); 
-lib_path = append(mfileshortpath, 'lib');
-addpath(genpath(lib_path));
-
 %% Loading in LUT file, select lateral units, set spacing and window values, check for overlap, select metricks
 
 % User selects the LUT:
@@ -83,7 +76,8 @@ while spacing < (window)
 end
 
 % select metrics for output - commented out for now and hard coded to just
-% use total and choroidal
+% use total and choroidal - if want to use this in the future would need to
+% finish the code by adding in which ones to use in the output data below
 % list = {'Total Retinal Thickness','Inner Retinal Thickness','Outer Retinal Thickness','Choroidal Thickness'};
 % [indx_metrics,tf2] = listdlg('ListString', list);
 
@@ -159,8 +153,6 @@ while strcmpi(observers, 'YES')
             else
                 data_compiled_1 = [data_compiled_1; file_name num2cell(obs_results_tot{1,obs_count}(v).locations_total') num2cell(obs_results_tot{1,obs_count}(v).avg_thickness_total') num2cell(obs_results_chor{1,obs_count}(v).avg_thickness_total') num2cell(obs_results_tot{1,obs_count}(v).size_of_bin_total')];
             end
-    
-            
 
         end
         % combine headers with the data
@@ -174,7 +166,6 @@ while strcmpi(observers, 'YES')
     
 end
 close all
-
 
 %% First funciton - call_calculate_avg_thickness
 function [results_tot, results_in, results_out, results_chor] = call_calculate_avg_thickness(obs_folder, spacing, window, LUT, unit)
@@ -276,7 +267,6 @@ function [results_tot, results_in, results_out, results_chor] = call_calculate_a
     end
 end
      
-
 %% Funciton 2 - Calculate - Does thickness calculations
 function [results_tot, results_in, results_out, results_cor] = calculate_avg_thickness(window, spacing, matrix, LorR, i, results_tot, results_in, results_out, results_cor, lateral_scale)
  
@@ -320,7 +310,6 @@ function [results_tot, results_in, results_out, results_cor] = calculate_avg_thi
         window_count = window_count +1;
 
     end
-    
     
     % add results to the struct
     if strcmpi(LorR, 'right') % if the matrix was to the right of 0
