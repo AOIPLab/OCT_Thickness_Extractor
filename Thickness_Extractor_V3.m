@@ -1,5 +1,25 @@
 % OCT Thickness Extractor
-% Jenna's Take
+% Created by: Jenna Grieshop
+% Date created: 3/9/2023
+%
+% Purpose: Interactive script to calculate average OCT thicknesses from one or more 
+% graders/observers at specific sampling points (spacing) with a specific
+% bin (window) sizes from the center of the optic nerve head
+% 
+% Requirements: LUT file with the file/folder names and lateral scale
+% information (px/deg, mpp), grader/observer folder(s)
+%
+% Inputs: prompt for LUT file, prompt for unit selection, prompt for
+% spacing and window size, prompt to select observer/grader folder, prompt
+% to select "seed" on image of approximate 0 (center of the ONH)
+%
+% Outputs: An excel file for each grader will be generated in the location
+% of the LUT file.
+%
+% Note: If the window size will overlap with the selections made
+% it will give a warning and another chance to set the sampling and window
+% size.
+
 
 clear all
 close all
@@ -66,6 +86,8 @@ end
 % use total and choroidal
 % list = {'Total Retinal Thickness','Inner Retinal Thickness','Outer Retinal Thickness','Choroidal Thickness'};
 % [indx_metrics,tf2] = listdlg('ListString', list);
+
+% header for output file
 header = {'File Name', 'Location', 'Total Retinal Thickness', 'Choroidal Thickness', 'Bin Size'};
     
 %% Select observers and call calculation function
@@ -131,7 +153,7 @@ while strcmpi(observers, 'YES')
                 file_name{p,1} = obs_results_tot{obs_count}(v).file_name;
             end
             
-            % Combine the data with the file names and the headers
+            % Combine the data with the file names and previous data from the same observer
             if length(data_compiled_1) == 0
                 data_compiled_1 = [file_name num2cell(obs_results_tot{1,obs_count}(v).locations_total') num2cell(obs_results_tot{1,obs_count}(v).avg_thickness_total') num2cell(obs_results_chor{1,obs_count}(v).avg_thickness_total') num2cell(obs_results_tot{1,obs_count}(v).size_of_bin_total')]; 
             else
@@ -141,7 +163,9 @@ while strcmpi(observers, 'YES')
             
 
         end
+        % combine headers with the data
         data_compiled_2 = [header; data_compiled_1];
+        % write output file for the observer
         xlswrite(fullfile(LUTpath,output_fname), data_compiled_2);
 
         % add to observer count for indexing
