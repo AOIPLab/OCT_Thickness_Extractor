@@ -48,7 +48,6 @@ window = str2double(window{1});
 % spacing must be >= window for no overlap
 % if not loop until it is or the user can override and use the overlap
 while spacing < (window)
-    warning('Window overlap present with current spacing and window selections');
     contin = questdlg('WARNING: Window overlap with current spacing and window selections Continue with current selection?', ...
       '', ...
       'YES', 'NO', 'NO');
@@ -115,7 +114,7 @@ while strcmpi(observers, 'YES')
         end
 
         % format output results here
-        print("output")
+        % print("hello")
        
         % add to observer count for indexing
         obs_count = obs_count +1;
