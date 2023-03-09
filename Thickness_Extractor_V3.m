@@ -91,25 +91,29 @@ while strcmpi(observers, 'YES')
         obs_folder{obs_count} = temp(~ismember({temp.name}, {'.', '..'}));
         
         % call 1st function
-        [obs_results_tot{obs_count}, obs_results_in{obs_count}, obs_results_out{obs_count}, obs_results_cor{obs_count}] = call_calculate_avg_thickness(obs_folder{obs_count}, spacing, window, LUT, indx_unit);
+        [obs_results_tot{obs_count}, obs_results_in{obs_count}, obs_results_out{obs_count}, obs_results_chor{obs_count}] = call_calculate_avg_thickness(obs_folder{obs_count}, spacing, window, LUT, indx_unit);
         
         % data organization
-        for v = 1:length(obs_folder{1,1})
-            % combine left and right values for total (thickness and locations)
+        for v = 1:length(obs_folder{1,obs_count})
+            % combine left and right values for total (thickness, locations, bin sizes)
             obs_results_tot{1,obs_count}(v).avg_thickness_total = [obs_results_tot{obs_count}(v).avg_thickness_val_left_tot, obs_results_tot{obs_count}(v).avg_thickness_val_right_tot];
             obs_results_tot{1,obs_count}(v).locations_total = [obs_results_tot{obs_count}(v).locations_left, obs_results_tot{obs_count}(v).locations_right];
+            obs_results_tot{1,obs_count}(v).size_of_bin_total = [obs_results_tot{obs_count}(v).size_of_bin_left, obs_results_tot{obs_count}(v).size_of_bin_right];
             
-            % combine left and right values for inner (thickness and locations)
+            % combine left and right values for inner (thickness, locations, bin sizes)
             obs_results_in{1,obs_count}(v).avg_thickness_total = [obs_results_in{obs_count}(v).avg_thickness_val_left_in, obs_results_in{obs_count}(v).avg_thickness_val_right_in];
             obs_results_in{1,obs_count}(v).locations_total = [obs_results_in{obs_count}(v).locations_left, obs_results_in{obs_count}(v).locations_right];
+            obs_results_in{1,obs_count}(v).size_of_bin_total = [obs_results_in{obs_count}(v).size_of_bin_left, obs_results_in{obs_count}(v).size_of_bin_right];
 
-            % combine left and right values for outer (thickness and locations)
+            % combine left and right values for outer (thickness, locations, bin sizes)
             obs_results_out{1,obs_count}(v).avg_thickness_total = [obs_results_out{obs_count}(v).avg_thickness_val_left_out, obs_results_out{obs_count}(v).avg_thickness_val_right_out];
             obs_results_out{1,obs_count}(v).locations_total = [obs_results_out{obs_count}(v).locations_left, obs_results_out{obs_count}(v).locations_right];
+            obs_results_out{1,obs_count}(v).size_of_bin_total = [obs_results_out{obs_count}(v).size_of_bin_left, obs_results_out{obs_count}(v).size_of_bin_right];
 
-            % combine left and right values for corroidal (thickness and locations)
-            obs_results_cor{1,obs_count}(v).avg_thickness_total = [obs_results_cor{obs_count}(v).avg_thickness_val_left_cor, obs_results_cor{obs_count}(v).avg_thickness_val_right_cor];
-            obs_results_cor{1,obs_count}(v).locations_total = [obs_results_cor{obs_count}(v).locations_left, obs_results_cor{obs_count}(v).locations_right];
+            % combine left and right values for corroidal (thickness, locations, bin sizes)
+            obs_results_chor{1,obs_count}(v).avg_thickness_total = [obs_results_chor{obs_count}(v).avg_thickness_val_left_cor, obs_results_chor{obs_count}(v).avg_thickness_val_right_cor];
+            obs_results_chor{1,obs_count}(v).locations_total = [obs_results_chor{obs_count}(v).locations_left, obs_results_chor{obs_count}(v).locations_right];
+            obs_results_chor{1,obs_count}(v).size_of_bin_total = [obs_results_chor{obs_count}(v).size_of_bin_left, obs_results_chor{obs_count}(v).size_of_bin_right];
 
         end
 
@@ -124,7 +128,7 @@ end
 
 
 %% First funciton - call_calculate_avg_thickness
-function [results_tot, results_in, results_out, results_cor] = call_calculate_avg_thickness(obs_folder, spacing, window, LUT, unit)
+function [results_tot, results_in, results_out, results_chor] = call_calculate_avg_thickness(obs_folder, spacing, window, LUT, unit)
     
     % pre-allocate for left
     avg_thickness_val_left = NaN(length(obs_folder), 650);
@@ -135,7 +139,7 @@ function [results_tot, results_in, results_out, results_cor] = call_calculate_av
     results_tot = struct([]);
     results_in = struct([]);
     results_out = struct([]);
-    results_cor = struct([]);
+    results_chor = struct([]);
     
     %% get path, load segmentation, find lateral scale, set user seed
     
@@ -158,7 +162,7 @@ function [results_tot, results_in, results_out, results_cor] = call_calculate_av
         results_tot(i).file_name = obs_folder(i).name;
         results_in(i).file_name = obs_folder(i).name;
         results_out(i).file_name = obs_folder(i).name;
-        results_cor(i).file_name = obs_folder(i).name;
+        results_chor(i).file_name = obs_folder(i).name;
 
         % find the index of the lateral scale for the specific scan from
         % the LUT file
@@ -188,18 +192,18 @@ function [results_tot, results_in, results_out, results_cor] = call_calculate_av
         
         % look to the left of the seed for the edge (end of 0s in corroidal layer)
         iterationl = 0;
-        cor_vall = segmentation(5, seed_px);
-        while cor_vall == 0
+        chor_vall = segmentation(5, seed_px);
+        while chor_vall == 0
             iterationl = iterationl + 1;
-            cor_vall = segmentation(5, seed_px - iterationl);   
+            chor_vall = segmentation(5, seed_px - iterationl);   
         end
         
         % look to the right of the seed for the edge (end of 0s in corroidal layer)
         iterationr = 0;
-        cor_valr = segmentation(5, seed_px);
-        while cor_valr == 0
+        chor_valr = segmentation(5, seed_px);
+        while chor_valr == 0
             iterationr = iterationr + 1;
-            cor_valr = segmentation(5, seed_px+iterationr);
+            chor_valr = segmentation(5, seed_px+iterationr);
         end
         
         % find the range of the ONH
@@ -216,8 +220,8 @@ function [results_tot, results_in, results_out, results_cor] = call_calculate_av
         
         
         % call 2nd function for the left and the right side of 0
-        [results_tot, results_in, results_out, results_cor] = calculate_avg_thickness(window, spacing, left_of_seed, 'left', i, results_tot, results_in, results_out, results_cor, lateral_scale);
-        [results_tot, results_in, results_out, results_cor] = calculate_avg_thickness(window, spacing, right_of_seed, 'right', i, results_tot, results_in, results_out, results_cor, lateral_scale);
+        [results_tot, results_in, results_out, results_chor] = calculate_avg_thickness(window, spacing, left_of_seed, 'left', i, results_tot, results_in, results_out, results_chor, lateral_scale);
+        [results_tot, results_in, results_out, results_chor] = calculate_avg_thickness(window, spacing, right_of_seed, 'right', i, results_tot, results_in, results_out, results_chor, lateral_scale);
 
     end
 end
@@ -225,95 +229,80 @@ end
 
 %% Funciton 2 - Calculate - Does thickness calculations
 function [results_tot, results_in, results_out, results_cor] = calculate_avg_thickness(window, spacing, matrix, LorR, i, results_tot, results_in, results_out, results_cor, lateral_scale)
+ 
+    % initialization
+    bin_size = 0;
+%     values_total = NaN;
+%     values_inner = NaN;
+%     values_outer = NaN;
+%     values_choroidal = NaN;
 
-    % convert spacing and window to pixels using the lateral scale - needs to be an integer so round
-    spacing = round(spacing * lateral_scale);
-    window = round(window * lateral_scale);
-   
-    if mod(window,2) % check if odd
-        window_l = floor(window / 2);
-        window_r = floor(window / 2);
-    else
-        window_l = floor(window / 2) - 1; % subtract 1 so that additional datapoint on the right of the spacing point if even
-        window_r = floor(window / 2); 
-    end
-    
-    % get locations stored in an array
-    locations = spacing:spacing:size(matrix, 2);
-    locations = locations / lateral_scale; % convert locations back to the lateral scale unit to have exact report
-    
-    spacing_point = 1;
-    % for loop to go through all the spacings and calculate thickness for
-    % the windows
-    for sampling_point = spacing:spacing:size(matrix, 2)
-        window_count = 1;
-        % get thickness at the sampling point (center of window)
-        values_total(window_count) = matrix(2, sampling_point);
-        values_inner(window_count) = matrix(3, sampling_point);
-        values_outer(window_count) = matrix(4, sampling_point);
-        values_corroidal(window_count) = matrix(5, sampling_point);
-        window_count = window_count + 1; 
-        
-        for left_window_p = 1:window_l % go through to get thickness values to the left of the sampling point
-            values_total(window_count) = matrix(2, sampling_point - left_window_p);
-            values_inner(window_count) = matrix(3, sampling_point - left_window_p);
-            values_outer(window_count) = matrix(4, sampling_point - left_window_p);
-            values_corroidal(window_count) = matrix(5,sampling_point - left_window_p);
-            window_count = window_count + 1;
-        end
-        
-        for right_window_p = 1:window_r % right of sampling point
-            % if about to go out of bounds, incomplete window - record the actual size of the window. This would only happen on right side since left matrix gets flipped
-            if (sampling_point + right_window_p) > size(matrix, 2)
-                pos_diff = sampling_point + right_window_p;
-                not_enough = pos_diff - size(matrix, 2);
-                incomplete_window = window-not_enough;
-                incomplete_window = incomplete_window / lateral_scale; % comvert from pixels to desired units
-                
-            else % go through to get thickness values to the right of the sampling point
-                values_total(window_count) = matrix(2, sampling_point + right_window_p);
-                values_inner(window_count) = matrix(3, sampling_point + right_window_p);
-                values_outer(window_count) = matrix(4, sampling_point + right_window_p);
-                values_corroidal(window_count) = matrix(5, sampling_point + right_window_p);
-                window_count = window_count + 1; 
-                incomplete_window = NaN;
+    size_of_matrix_in_unit = size(matrix, 2) * (1/lateral_scale); % get the size of the matrix in desired unit
+    locations = spacing:spacing:size_of_matrix_in_unit; % get locations of all the sampling points in desired unit
+    px_to_unit = 0:(1/lateral_scale):50; 
+    px_to_unit = px_to_unit(1:size(matrix,2)); % indexes of matrix in desired unit
+
+    window_count = 1;
+    for sampling_point = locations
+        % get the min and max for the bin range
+        bin_range_min = sampling_point - (window/2);
+        bin_range_max = sampling_point + (window/2);
+
+        px_index = 1;
+        count = 1;
+        for pixel = px_to_unit
+            if pixel >= bin_range_min
+                if pixel < bin_range_max
+                    indeces(count) = px_index;
+                    count = count +1;
+                end
             end
-            
+            px_index = px_index +1;
         end
-        % average the values from that sampling window and store
-        values_total_avg(spacing_point) = mean(values_total);
-        values_inner_avg(spacing_point) = mean(values_inner);
-        values_outer_avg(spacing_point) = mean(values_outer);
-        values_corroidal_avg(spacing_point) = mean(values_corroidal);
-        spacing_point = spacing_point +1;
+        
+        index_max = max(indeces);
+        index_min = min(indeces);
+        bin_size(window_count) = length(indeces);
+        values_total(window_count) = mean(matrix(2, (index_min:index_max)));
+        values_inner(window_count) = mean(matrix(3, (index_min:index_max)));
+        values_outer(window_count) = mean(matrix(4, (index_min:index_max)));
+        values_choroidal(window_count) = mean(matrix(5, (index_min:index_max)));
+        window_count = window_count +1;
+
     end
+    
     
     % add results to the struct
     if strcmpi(LorR, 'right') % if the matrix was to the right of 0
-        % store thicknesses
-        results_tot(i).avg_thickness_val_right_tot = values_total_avg;
-        results_in(i).avg_thickness_val_right_in = values_inner_avg;
-        results_out(i).avg_thickness_val_right_out = values_outer_avg;
-        results_cor(i).avg_thickness_val_right_cor = values_corroidal_avg;
-
-        % store locations
-        results_tot(i).locations_right = locations;
-        results_in(i).locations_right = locations;
-        results_out(i).locations_right = locations;
-        results_cor(i).locations_right = locations;
-
-        % store incomplete window information
-        results_tot(i).incomplete_window_right = incomplete_window;
-        results_in(i).incomplete_window_right = incomplete_window;
-        results_out(i).incomplete_window_right = incomplete_window;
-        results_cor(i).incomplete_window_right = incomplete_window;
+        if bin_size == 0
+        else
+            % store thicknesses
+            results_tot(i).avg_thickness_val_right_tot = values_total;
+            results_in(i).avg_thickness_val_right_in = values_inner;
+            results_out(i).avg_thickness_val_right_out = values_outer;
+            results_cor(i).avg_thickness_val_right_cor = values_choroidal;
+    
+            % store locations
+            results_tot(i).locations_right = locations;
+            results_in(i).locations_right = locations;
+            results_out(i).locations_right = locations;
+            results_cor(i).locations_right = locations;
+    
+            % store incomplete window information
+            results_tot(i).size_of_bin_right = bin_size;
+            results_in(i).size_of_bin_right = bin_size;
+            results_out(i).size_of_bin_right = bin_size;
+            results_cor(i).size_of_bin_right = bin_size;
+        end
 
     else % if the matrix was to the left of 0
+        if bin_size == 0
+        else
         % store thicknesses - flip left results back to read left to right
-        results_tot(i).avg_thickness_val_left_tot = flip(values_total_avg,2);
-        results_in(i).avg_thickness_val_left_in = flip(values_inner_avg,2);
-        results_out(i).avg_thickness_val_left_out = flip(values_outer_avg,2);
-        results_cor(i).avg_thickness_val_left_cor = flip(values_corroidal_avg,2);
+        results_tot(i).avg_thickness_val_left_tot = flip(values_total,2);
+        results_in(i).avg_thickness_val_left_in = flip(values_inner,2);
+        results_out(i).avg_thickness_val_left_out = flip(values_outer,2);
+        results_cor(i).avg_thickness_val_left_cor = flip(values_choroidal,2);
 
         % store locations - flip back to read left to right and negate to indicate they are from the left
         results_tot(i).locations_left = -flip(locations);
@@ -322,10 +311,11 @@ function [results_tot, results_in, results_out, results_cor] = calculate_avg_thi
         results_cor(i).locations_left = -flip(locations);
 
         % store incomplete window information
-        results_tot(i).incomplete_window_left = incomplete_window;
-        results_in(i).incomplete_window_left = incomplete_window;
-        results_out(i).incomplete_window_left = incomplete_window;
-        results_cor(i).incomplete_window_left = incomplete_window;
+        results_tot(i).size_of_bin_left = bin_size;
+        results_in(i).size_of_bin_left = bin_size;
+        results_out(i).size_of_bin_left = bin_size;
+        results_cor(i).size_of_bin_left = bin_size;
+        end
 
     end
 
