@@ -62,9 +62,11 @@ while spacing < (window)
   end
 end
 
-% select metrics for output
-list = {'Total Retinal Thickness','Inner Retinal Thickness','Outer Retinal Thickness','Corroidal Thickness'};
-[indx_metrics,tf2] = listdlg('ListString', list);
+% select metrics for output - commented out for now and hard coded to just
+% use total and choroidal
+% list = {'Total Retinal Thickness','Inner Retinal Thickness','Outer Retinal Thickness','Choroidal Thickness'};
+% [indx_metrics,tf2] = listdlg('ListString', list);
+header = {'File Name', 'Location', 'Total Retinal Thickness', 'Choroidal Thickness', 'Bin Size'};
     
 %% Select observers and call calculation function
 % set starting default values
@@ -79,6 +81,7 @@ while strcmpi(observers, 'YES')
 
     if strcmpi(observers, 'NO')
     elseif strcmpi(observers, 'YES')
+        data_compiled_1 = [];
         % user selects observer directory
         obs_fullpath{obs_count} = uigetdir('.','Select directory for observer ');
     
@@ -89,6 +92,10 @@ while strcmpi(observers, 'YES')
         % Fix the DOS era issue with the dir function (loads in the parent
         % directories '.' and '..')
         obs_folder{obs_count} = temp(~ismember({temp.name}, {'.', '..'}));
+
+        obs_name = split(obs_fullpath, '\');
+        obs_name = obs_name(end);
+        output_fname = strcat(obs_name{1,1}, '_OCT_Thickness_Results_', string(datetime('now','TimeZone','local','Format','yyyyMMdd')));        
         
         % call 1st function
         [obs_results_tot{obs_count}, obs_results_in{obs_count}, obs_results_out{obs_count}, obs_results_chor{obs_count}] = call_calculate_avg_thickness(obs_folder{obs_count}, spacing, window, LUT, indx_unit);
@@ -115,16 +122,34 @@ while strcmpi(observers, 'YES')
             obs_results_chor{1,obs_count}(v).locations_total = [obs_results_chor{obs_count}(v).locations_left, obs_results_chor{obs_count}(v).locations_right];
             obs_results_chor{1,obs_count}(v).size_of_bin_total = [obs_results_chor{obs_count}(v).size_of_bin_left, obs_results_chor{obs_count}(v).size_of_bin_right];
 
-        end
+            % formatting output for each grader
 
-        % format output results here
-        % print("hello")
-       
+            % get the name of the scan in a cell array with the necessary
+            % ammount
+            file_name = cell(length(obs_results_tot{1,obs_count}(v).locations_total),1);
+            for p = 1:length(file_name)
+                file_name{p,1} = obs_results_tot{obs_count}(v).file_name;
+            end
+            
+            % Combine the data with the file names and the headers
+            if length(data_compiled_1) == 0
+                data_compiled_1 = [file_name num2cell(obs_results_tot{1,obs_count}(v).locations_total') num2cell(obs_results_tot{1,obs_count}(v).avg_thickness_total') num2cell(obs_results_chor{1,obs_count}(v).avg_thickness_total') num2cell(obs_results_tot{1,obs_count}(v).size_of_bin_total')]; 
+            else
+                data_compiled_1 = [data_compiled_1; file_name num2cell(obs_results_tot{1,obs_count}(v).locations_total') num2cell(obs_results_tot{1,obs_count}(v).avg_thickness_total') num2cell(obs_results_chor{1,obs_count}(v).avg_thickness_total') num2cell(obs_results_tot{1,obs_count}(v).size_of_bin_total')];
+            end
+    
+            
+
+        end
+        data_compiled_2 = [header; data_compiled_1];
+        xlswrite(fullfile(LUTpath,output_fname), data_compiled_2);
+
         % add to observer count for indexing
         obs_count = obs_count +1;
     end
     
 end
+close all
 
 
 %% First funciton - call_calculate_avg_thickness
@@ -157,6 +182,7 @@ function [results_tot, results_in, results_out, results_chor] = call_calculate_a
         % open and show the image
         image = imshow(imread(image_path));
         title(obs_folder(i).name, 'Interpreter', 'none');
+        set(gcf, 'units','normalized','outerposition',[0 0 1 1]); % make the image full screen
         
         % add file names to results structs
         results_tot(i).file_name = obs_folder(i).name;
@@ -230,17 +256,13 @@ end
 %% Funciton 2 - Calculate - Does thickness calculations
 function [results_tot, results_in, results_out, results_cor] = calculate_avg_thickness(window, spacing, matrix, LorR, i, results_tot, results_in, results_out, results_cor, lateral_scale)
  
-    % initialization
+    % initialize the bin_size value so that if the bin size remains 0 the code won't try to add non-existant data to the struct
     bin_size = 0;
-%     values_total = NaN;
-%     values_inner = NaN;
-%     values_outer = NaN;
-%     values_choroidal = NaN;
 
     size_of_matrix_in_unit = size(matrix, 2) * (1/lateral_scale); % get the size of the matrix in desired unit
     locations = spacing:spacing:size_of_matrix_in_unit; % get locations of all the sampling points in desired unit
-    px_to_unit = 0:(1/lateral_scale):50; 
-    px_to_unit = px_to_unit(1:size(matrix,2)); % indexes of matrix in desired unit
+    px_to_unit = 0:(1/lateral_scale):50; % pixel location converted to unit value to max degrees possible
+    px_to_unit = px_to_unit(1:size(matrix,2)); % pixel location converted to unit value at each index corresponding to the data matrix
 
     window_count = 1;
     for sampling_point = locations
@@ -250,19 +272,23 @@ function [results_tot, results_in, results_out, results_cor] = calculate_avg_thi
 
         px_index = 1;
         count = 1;
-        for pixel = px_to_unit
-            if pixel >= bin_range_min
-                if pixel < bin_range_max
-                    indeces(count) = px_index;
+        % go through each unit converted pixel location to determine which indeces in the matrix are in the window
+        for location = px_to_unit
+            if location >= bin_range_min % location must be greater than or equal to the bin range minimum
+                if location < bin_range_max % location must be less than the bin range maximum
+                    indeces(count) = px_index; % store the index of the location that fits in the bin range
                     count = count +1;
                 end
             end
             px_index = px_index +1;
         end
         
+        % find the index range for values that fit in the window
         index_max = max(indeces);
         index_min = min(indeces);
+        % get the ammount of data points that fit in the window
         bin_size(window_count) = length(indeces);
+        % average the thickness of the matrix indices that fit in the window and store the values for each window
         values_total(window_count) = mean(matrix(2, (index_min:index_max)));
         values_inner(window_count) = mean(matrix(3, (index_min:index_max)));
         values_outer(window_count) = mean(matrix(4, (index_min:index_max)));
@@ -274,7 +300,7 @@ function [results_tot, results_in, results_out, results_cor] = calculate_avg_thi
     
     % add results to the struct
     if strcmpi(LorR, 'right') % if the matrix was to the right of 0
-        if bin_size == 0
+        if bin_size == 0 % if bin size is zero there is no data to store
         else
             % store thicknesses
             results_tot(i).avg_thickness_val_right_tot = values_total;
@@ -296,7 +322,7 @@ function [results_tot, results_in, results_out, results_cor] = calculate_avg_thi
         end
 
     else % if the matrix was to the left of 0
-        if bin_size == 0
+        if bin_size == 0 % if bin size is zero there is no data to store
         else
         % store thicknesses - flip left results back to read left to right
         results_tot(i).avg_thickness_val_left_tot = flip(values_total,2);
