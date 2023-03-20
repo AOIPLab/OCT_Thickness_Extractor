@@ -286,12 +286,12 @@ function [results_tot, results_in, results_out, results_cor] = calculate_avg_thi
 
         px_index = 1;
         count = 1;
-        indeces = [];
+        indices = [];
         % go through each unit converted pixel location to determine which indeces in the matrix are in the window
         for location = px_to_unit
             if location >= bin_range_min % location must be greater than or equal to the bin range minimum
                 if location < bin_range_max % location must be less than the bin range maximum
-                    indeces(count) = px_index; % store the index of the location that fits in the bin range
+                    indices(count) = px_index; % store the index of the location that fits in the bin range
                     count = count +1;
                 end
             end
@@ -299,10 +299,10 @@ function [results_tot, results_in, results_out, results_cor] = calculate_avg_thi
         end
         
         % find the index range for values that fit in the window
-        index_max = max(indeces);
-        index_min = min(indeces);
+        index_max = max(indices);
+        index_min = min(indices);
         % get the ammount of data points that fit in the window
-        bin_size(window_count) = length(indeces);
+        bin_size(window_count) = length(indices);
         % average the thickness of the matrix indices that fit in the window and store the values for each window
         values_total(window_count) = mean(matrix(2, (index_min:index_max)));
         values_inner(window_count) = mean(matrix(3, (index_min:index_max)));
