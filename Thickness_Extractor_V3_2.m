@@ -274,7 +274,8 @@ function [results_tot, results_in, results_out, results_cor] = calculate_avg_thi
     bin_size = 0;
 
     size_of_matrix_in_unit = size(matrix, 2) * (1/lateral_scale); % get the size of the matrix in desired unit
-    sampling_points = spacing:spacing:size_of_matrix_in_unit; % get locations of all the sampling points in desired unit
+    spacing_starting_point = spacing/2; % have the starting point at half of the desired spacing so that none of the data is left out
+    sampling_points = spacing_starting_point:spacing:size_of_matrix_in_unit; % get locations of all the sampling points in desired unit
     px_to_unit = 0:(1/lateral_scale):50; % pixel location converted to unit value to max degrees possible
     px_to_unit = px_to_unit(1:size(matrix,2)); % pixel location converted to unit value at each index corresponding to the data matrix
 
