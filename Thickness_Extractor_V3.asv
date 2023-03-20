@@ -1,18 +1,20 @@
 % OCT Thickness Extractor
 % Created by: Jenna Grieshop
 % Date created: 3/9/2023
-% Purpose: Script to calculate average OCT thicknesses from one or more 
-% graders observers at specific sampling points (spacing) with a specific
-% window/bin sizes. 
-% 
+%
+% Purpose: Interactive script to calculate average OCT thicknesses from one or more 
+% graders/observers at specific sampling points (spacing) with a specific
+% bin (window) sizes from the center of the optic nerve head
 % 
 % Requirements: LUT file with the file/folder names and lateral scale
 % information (px/deg, mpp), grader/observer folder(s)
 %
 % Inputs: prompt for LUT file, prompt for unit selection, prompt for
-% spacing and window size, prompt to select observer/grader folder
+% spacing and window size, prompt to select observer/grader folder, prompt
+% to select "seed" on image of approximate 0 (center of the ONH)
 %
-% Outputs: 
+% Outputs: An excel file for each grader will be generated in the location
+% of the LUT file.
 %
 % Note: If the window size will overlap with the selections made
 % it will give a warning and another chance to set the sampling and window
@@ -22,13 +24,6 @@
 clear all
 close all
 clc
-
-
-%% Load in the lib folder 
-mfilefullpath = matlab.desktop.editor.getActiveFilename; 
-mfileshortpath = erase(mfilefullpath, 'Thickness_Extractor_V1.m'); 
-lib_path = append(mfileshortpath, 'lib');
-addpath(genpath(lib_path));
 
 %% Loading in LUT file, select lateral units, set spacing and window values, check for overlap, select metricks
 
@@ -81,9 +76,12 @@ while spacing < (window)
 end
 
 % select metrics for output - commented out for now and hard coded to just
-% use total and choroidal
+% use total and choroidal - if want to use this in the future would need to
+% finish the code by adding in which ones to use in the output data below
 % list = {'Total Retinal Thickness','Inner Retinal Thickness','Outer Retinal Thickness','Choroidal Thickness'};
 % [indx_metrics,tf2] = listdlg('ListString', list);
+
+% header for output file
 header = {'File Name', 'Location', 'Total Retinal Thickness', 'Choroidal Thickness', 'Bin Size'};
     
 %% Select observers and call calculation function
@@ -149,17 +147,17 @@ while strcmpi(observers, 'YES')
                 file_name{p,1} = obs_results_tot{obs_count}(v).file_name;
             end
             
-            % Combine the data with the file names and the headers
+            % Combine the data with the file names and previous data from the same observer
             if length(data_compiled_1) == 0
                 data_compiled_1 = [file_name num2cell(obs_results_tot{1,obs_count}(v).locations_total') num2cell(obs_results_tot{1,obs_count}(v).avg_thickness_total') num2cell(obs_results_chor{1,obs_count}(v).avg_thickness_total') num2cell(obs_results_tot{1,obs_count}(v).size_of_bin_total')]; 
             else
                 data_compiled_1 = [data_compiled_1; file_name num2cell(obs_results_tot{1,obs_count}(v).locations_total') num2cell(obs_results_tot{1,obs_count}(v).avg_thickness_total') num2cell(obs_results_chor{1,obs_count}(v).avg_thickness_total') num2cell(obs_results_tot{1,obs_count}(v).size_of_bin_total')];
             end
-    
-            
 
         end
+        % combine headers with the data
         data_compiled_2 = [header; data_compiled_1];
+        % write output file for the observer
         xlswrite(fullfile(LUTpath,output_fname), data_compiled_2);
 
         % add to observer count for indexing
@@ -168,7 +166,6 @@ while strcmpi(observers, 'YES')
     
 end
 close all
-
 
 %% First funciton - call_calculate_avg_thickness
 function [results_tot, results_in, results_out, results_chor] = call_calculate_avg_thickness(obs_folder, spacing, window, LUT, unit)
@@ -270,7 +267,6 @@ function [results_tot, results_in, results_out, results_chor] = call_calculate_a
     end
 end
      
-
 %% Funciton 2 - Calculate - Does thickness calculations
 function [results_tot, results_in, results_out, results_cor] = calculate_avg_thickness(window, spacing, matrix, LorR, i, results_tot, results_in, results_out, results_cor, lateral_scale)
  
@@ -278,18 +274,19 @@ function [results_tot, results_in, results_out, results_cor] = calculate_avg_thi
     bin_size = 0;
 
     size_of_matrix_in_unit = size(matrix, 2) * (1/lateral_scale); % get the size of the matrix in desired unit
-    locations = spacing:spacing:size_of_matrix_in_unit; % get locations of all the sampling points in desired unit
+    sampling_points = spacing:spacing:size_of_matrix_in_unit; % get locations of all the sampling points in desired unit
     px_to_unit = 0:(1/lateral_scale):50; % pixel location converted to unit value to max degrees possible
     px_to_unit = px_to_unit(1:size(matrix,2)); % pixel location converted to unit value at each index corresponding to the data matrix
 
     window_count = 1;
-    for sampling_point = locations
+    for point = sampling_points
         % get the min and max for the bin range
-        bin_range_min = sampling_point - (window/2);
-        bin_range_max = sampling_point + (window/2);
+        bin_range_min = point - (window/2);
+        bin_range_max = point + (window/2);
 
         px_index = 1;
         count = 1;
+        indeces = [];
         % go through each unit converted pixel location to determine which indeces in the matrix are in the window
         for location = px_to_unit
             if location >= bin_range_min % location must be greater than or equal to the bin range minimum
@@ -315,7 +312,6 @@ function [results_tot, results_in, results_out, results_cor] = calculate_avg_thi
 
     end
     
-    
     % add results to the struct
     if strcmpi(LorR, 'right') % if the matrix was to the right of 0
         if bin_size == 0 % if bin size is zero there is no data to store
@@ -327,10 +323,10 @@ function [results_tot, results_in, results_out, results_cor] = calculate_avg_thi
             results_cor(i).avg_thickness_val_right_cor = values_choroidal;
     
             % store locations
-            results_tot(i).locations_right = locations;
-            results_in(i).locations_right = locations;
-            results_out(i).locations_right = locations;
-            results_cor(i).locations_right = locations;
+            results_tot(i).locations_right = sampling_points;
+            results_in(i).locations_right = sampling_points;
+            results_out(i).locations_right = sampling_points;
+            results_cor(i).locations_right = sampling_points;
     
             % store incomplete window information
             results_tot(i).size_of_bin_right = bin_size;
@@ -349,16 +345,16 @@ function [results_tot, results_in, results_out, results_cor] = calculate_avg_thi
         results_cor(i).avg_thickness_val_left_cor = flip(values_choroidal,2);
 
         % store locations - flip back to read left to right and negate to indicate they are from the left
-        results_tot(i).locations_left = -flip(locations);
-        results_in(i).locations_left = -flip(locations);
-        results_out(i).locations_left = -flip(locations);
-        results_cor(i).locations_left = -flip(locations);
+        results_tot(i).locations_left = -flip(sampling_points);
+        results_in(i).locations_left = -flip(sampling_points);
+        results_out(i).locations_left = -flip(sampling_points);
+        results_cor(i).locations_left = -flip(sampling_points);
 
         % store incomplete window information
-        results_tot(i).size_of_bin_left = bin_size;
-        results_in(i).size_of_bin_left = bin_size;
-        results_out(i).size_of_bin_left = bin_size;
-        results_cor(i).size_of_bin_left = bin_size;
+        results_tot(i).size_of_bin_left = flip(bin_size);
+        results_in(i).size_of_bin_left = flip(bin_size);
+        results_out(i).size_of_bin_left = flip(bin_size);
+        results_cor(i).size_of_bin_left = flip(bin_size);
         end
 
     end

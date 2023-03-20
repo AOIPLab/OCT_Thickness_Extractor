@@ -274,18 +274,19 @@ function [results_tot, results_in, results_out, results_cor] = calculate_avg_thi
     bin_size = 0;
 
     size_of_matrix_in_unit = size(matrix, 2) * (1/lateral_scale); % get the size of the matrix in desired unit
-    locations = spacing:spacing:size_of_matrix_in_unit; % get locations of all the sampling points in desired unit
+    sampling_points = spacing:spacing:size_of_matrix_in_unit; % get locations of all the sampling points in desired unit
     px_to_unit = 0:(1/lateral_scale):50; % pixel location converted to unit value to max degrees possible
     px_to_unit = px_to_unit(1:size(matrix,2)); % pixel location converted to unit value at each index corresponding to the data matrix
 
     window_count = 1;
-    for sampling_point = locations
+    for point = sampling_points
         % get the min and max for the bin range
-        bin_range_min = sampling_point - (window/2);
-        bin_range_max = sampling_point + (window/2);
+        bin_range_min = point - (window/2);
+        bin_range_max = point + (window/2);
 
         px_index = 1;
         count = 1;
+        indeces = [];
         % go through each unit converted pixel location to determine which indeces in the matrix are in the window
         for location = px_to_unit
             if location >= bin_range_min % location must be greater than or equal to the bin range minimum
@@ -322,10 +323,10 @@ function [results_tot, results_in, results_out, results_cor] = calculate_avg_thi
             results_cor(i).avg_thickness_val_right_cor = values_choroidal;
     
             % store locations
-            results_tot(i).locations_right = locations;
-            results_in(i).locations_right = locations;
-            results_out(i).locations_right = locations;
-            results_cor(i).locations_right = locations;
+            results_tot(i).locations_right = sampling_points;
+            results_in(i).locations_right = sampling_points;
+            results_out(i).locations_right = sampling_points;
+            results_cor(i).locations_right = sampling_points;
     
             % store incomplete window information
             results_tot(i).size_of_bin_right = bin_size;
@@ -344,16 +345,16 @@ function [results_tot, results_in, results_out, results_cor] = calculate_avg_thi
         results_cor(i).avg_thickness_val_left_cor = flip(values_choroidal,2);
 
         % store locations - flip back to read left to right and negate to indicate they are from the left
-        results_tot(i).locations_left = -flip(locations);
-        results_in(i).locations_left = -flip(locations);
-        results_out(i).locations_left = -flip(locations);
-        results_cor(i).locations_left = -flip(locations);
+        results_tot(i).locations_left = -flip(sampling_points);
+        results_in(i).locations_left = -flip(sampling_points);
+        results_out(i).locations_left = -flip(sampling_points);
+        results_cor(i).locations_left = -flip(sampling_points);
 
         % store incomplete window information
-        results_tot(i).size_of_bin_left = bin_size;
-        results_in(i).size_of_bin_left = bin_size;
-        results_out(i).size_of_bin_left = bin_size;
-        results_cor(i).size_of_bin_left = bin_size;
+        results_tot(i).size_of_bin_left = flip(bin_size);
+        results_in(i).size_of_bin_left = flip(bin_size);
+        results_out(i).size_of_bin_left = flip(bin_size);
+        results_cor(i).size_of_bin_left = flip(bin_size);
         end
 
     end
