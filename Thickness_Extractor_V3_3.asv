@@ -120,31 +120,27 @@ while strcmpi(observers, 'YES')
         for v = 1:length(obs_folder{1,obs_count})
             
             % combine 0s for total thickness
-            left_right_0s = [obs_results_tot{obs_count}(v).avg_thickness_val_left_tot(end), obs_results_tot{obs_count}(v).avg_thickness_val_right_tot(1)];
-            l_r_0_mean = mean(left_right_0s); % get the mean of the left and right 0s thicknesses
+            obs_results_tot{1,obs_count}(v).zero_thickness_total = [obs_results_tot{obs_count}(v).zero_vals_left_tot, obs_results_tot{obs_count}(v).zero_vals_right_tot];
+            l_r_0_mean = mean(obs_results_tot{1,obs_count}(v).zero_thickness_total); % get the mean of the left and right 0s thicknesses
             obs_results_tot{obs_count}(v).avg_thickness_val_left_tot(end) = l_r_0_mean; % add mean thickness value to the end of left
             obs_results_tot{obs_count}(v).avg_thickness_val_right_tot(1) = []; % remove first thickness element from right
             obs_results_tot{obs_count}(v).size_of_bin_left(end) = obs_results_tot{obs_count}(v).size_of_bin_left(end) + obs_results_tot{obs_count}(v).size_of_bin_right(1); % add the 0 bin sizes
             obs_results_tot{obs_count}(v).size_of_bin_right(1) = [];% remove first size of bin element from right
             obs_results_tot{obs_count}(v).locations_right(1) = []; % remove first location element from right
             
-
             % combine 0s for choroidal thickness
-            left_right_0s_chor = [obs_results_chor{obs_count}(v).avg_thickness_val_left_chor(end), obs_results_chor{obs_count}(v).avg_thickness_val_right_chor(1)];
-            l_r_0_mean_chor = mean(left_right_0s_chor); % get the mean of the left and right 0s thicknesses
+            obs_results_chor{1,obs_count}(v).zero_thickness_total = [obs_results_chor{obs_count}(v).zero_vals_left_tot, obs_results_chor{obs_count}(v).zero_vals_right_tot];
+            l_r_0_mean_chor = mean(obs_results_chor{1,obs_count}(v).zero_thickness_total); % get the mean of the left and right 0s thicknesses
             obs_results_chor{obs_count}(v).avg_thickness_val_left_chor(end) = l_r_0_mean_chor; % add mean thickness value to the end of left
             obs_results_chor{obs_count}(v).avg_thickness_val_right_chor(1) = []; % remove first thickness element from right
             obs_results_chor{obs_count}(v).size_of_bin_left(end) = obs_results_chor{obs_count}(v).size_of_bin_left(end) + obs_results_chor{obs_count}(v).size_of_bin_right(1); % add the 0 bin sizes
             obs_results_chor{obs_count}(v).size_of_bin_right(1) = [];% remove first size of bin element from right
             obs_results_chor{obs_count}(v).locations_right(1) = []; % remove first location element from right
 
-
             % combine left and right values for total (thickness, locations, bin sizes)
             obs_results_tot{1,obs_count}(v).avg_thickness_total = [obs_results_tot{obs_count}(v).avg_thickness_val_left_tot, obs_results_tot{obs_count}(v).avg_thickness_val_right_tot];
             obs_results_tot{1,obs_count}(v).locations_total = [obs_results_tot{obs_count}(v).locations_left, obs_results_tot{obs_count}(v).locations_right];
             obs_results_tot{1,obs_count}(v).size_of_bin_total = [obs_results_tot{obs_count}(v).size_of_bin_left, obs_results_tot{obs_count}(v).size_of_bin_right];
-            
-            k = find(~obs_results_tot{1,obs_count}(v).locations_total);
 
             % combine left and right values for inner (thickness, locations, bin sizes)
             obs_results_in{1,obs_count}(v).avg_thickness_total = [obs_results_in{obs_count}(v).avg_thickness_val_left_in, obs_results_in{obs_count}(v).avg_thickness_val_right_in];
@@ -157,7 +153,7 @@ while strcmpi(observers, 'YES')
             obs_results_out{1,obs_count}(v).size_of_bin_total = [obs_results_out{obs_count}(v).size_of_bin_left, obs_results_out{obs_count}(v).size_of_bin_right];
 
             % combine left and right values for choroidal (thickness, locations, bin sizes)
-            obs_results_chor{1,obs_count}(v).avg_thickness_total = [obs_results_chor{obs_count}(v).avg_thickness_val_left_chor, obs_results_chor{obs_count}(v).avg_thickness_val_right_cor];
+            obs_results_chor{1,obs_count}(v).avg_thickness_total = [obs_results_chor{obs_count}(v).avg_thickness_val_left_chor, obs_results_chor{obs_count}(v).avg_thickness_val_right_chor];
             obs_results_chor{1,obs_count}(v).locations_total = [obs_results_chor{obs_count}(v).locations_left, obs_results_chor{obs_count}(v).locations_right];
             obs_results_chor{1,obs_count}(v).size_of_bin_total = [obs_results_chor{obs_count}(v).size_of_bin_left, obs_results_chor{obs_count}(v).size_of_bin_right];
 
@@ -309,6 +305,7 @@ function [results_tot, results_in, results_out, results_cor] = calculate_avg_thi
 
     window_count = 1;
     first = 1;
+    first_store = 1;
     for point = sampling_points
 
         if first
@@ -346,6 +343,15 @@ function [results_tot, results_in, results_out, results_cor] = calculate_avg_thi
         values_inner(window_count) = mean(matrix(3, (index_min:index_max)));
         values_outer(window_count) = mean(matrix(4, (index_min:index_max)));
         values_choroidal(window_count) = mean(matrix(5, (index_min:index_max)));
+
+        if first_store
+            values_total_zero = matrix(2, (index_min:index_max));
+            values_inner_zero = matrix(3, (index_min:index_max));
+            values_outer_zero = matrix(4, (index_min:index_max));
+            values_choroidal_zero = matrix(5, (index_min:index_max));
+            first_store = 0;
+        end
+
         window_count = window_count +1;
 
     end
@@ -355,9 +361,13 @@ function [results_tot, results_in, results_out, results_cor] = calculate_avg_thi
         if bin_size == 0 % if bin size is zero there is no data to store
         else
             % store thicknesses
+            results_tot(i).zero_vals_right_tot = values_total_zero;
             results_tot(i).avg_thickness_val_right_tot = values_total;
+            results_in(i).zero_vals_right_in = values_inner_zero;
             results_in(i).avg_thickness_val_right_in = values_inner;
+            results_out(i).zero_vals_right_out = values_outer_zero;
             results_out(i).avg_thickness_val_right_out = values_outer;
+            results_cor(i).zero_vals_right_chor = values_choroidal_zero;
             results_cor(i).avg_thickness_val_right_chor = values_choroidal;
     
             % store locations
@@ -377,9 +387,13 @@ function [results_tot, results_in, results_out, results_cor] = calculate_avg_thi
         if bin_size == 0 % if bin size is zero there is no data to store
         else
         % store thicknesses - flip left results back to read left to right
+        results_tot(i).zero_vals_left_tot = flip(values_total_zero);
         results_tot(i).avg_thickness_val_left_tot = flip(values_total,2);
+        results_in(i).zero_vals_left_in = flip(values_inner_zero);
         results_in(i).avg_thickness_val_left_in = flip(values_inner,2);
+        results_out(i).zero_vals_left_out = flip(values_outer_zero);
         results_out(i).avg_thickness_val_left_out = flip(values_outer,2);
+        results_cor(i).zero_vals_left_chor = flip(values_choroidal_zero);
         results_cor(i).avg_thickness_val_left_chor = flip(values_choroidal,2);
 
         % store locations - flip back to read left to right and negate to indicate they are from the left
