@@ -82,7 +82,7 @@ end
 % [indx_metrics,tf2] = listdlg('ListString', list);
 
 % header for output file
-header = {'File Name', 'Location', 'Total Retinal Thickness', 'Choroidal Thickness', 'Bin Size'};
+header = {'File Name', 'Location', 'Total Retinal Thickness', 'Choroidal Thickness', 'Inner Thickness', 'Outer Thickness' 'Bin Size'};
     
 %% Select observers and call calculation function
 % set starting default values
@@ -147,7 +147,7 @@ while strcmpi(observers, 'YES')
             obs_results_in{obs_count}(v).locations_right(1) = []; % remove first location element from right
 
             % combine 0s for outer thickness
-            obs_results_out{1,obs_count}(v).zero_thickness_total = [obs_results_out{obs_count}(v).zero_vals_left_chor, obs_results_out{obs_count}(v).zero_vals_right_out]; % combine the left and right 0 data
+            obs_results_out{1,obs_count}(v).zero_thickness_total = [obs_results_out{obs_count}(v).zero_vals_left_out, obs_results_out{obs_count}(v).zero_vals_right_out]; % combine the left and right 0 data
             l_r_0_mean_out = mean(obs_results_out{1,obs_count}(v).zero_thickness_total); % get the mean of the left and right 0s thicknesses
             obs_results_out{obs_count}(v).avg_thickness_val_left_out(end) = l_r_0_mean_out; % add mean thickness value to the end of left
             obs_results_out{obs_count}(v).avg_thickness_val_right_out(1) = []; % remove first thickness element from right
@@ -186,9 +186,9 @@ while strcmpi(observers, 'YES')
             
             % Combine the data with the file names and previous data from the same observer
             if length(data_compiled_1) == 0
-                data_compiled_1 = [file_name num2cell(obs_results_tot{1,obs_count}(v).locations_total') num2cell(obs_results_tot{1,obs_count}(v).avg_thickness_total') num2cell(obs_results_chor{1,obs_count}(v).avg_thickness_total') num2cell(obs_results_tot{1,obs_count}(v).size_of_bin_total')]; 
+                data_compiled_1 = [file_name num2cell(obs_results_tot{1,obs_count}(v).locations_total') num2cell(obs_results_tot{1,obs_count}(v).avg_thickness_total') num2cell(obs_results_chor{1,obs_count}(v).avg_thickness_total') num2cell(obs_results_in{1,obs_count}(v).avg_thickness_total') num2cell(obs_results_out{1,obs_count}(v).avg_thickness_total') num2cell(obs_results_tot{1,obs_count}(v).size_of_bin_total')]; 
             else
-                data_compiled_1 = [data_compiled_1; file_name num2cell(obs_results_tot{1,obs_count}(v).locations_total') num2cell(obs_results_tot{1,obs_count}(v).avg_thickness_total') num2cell(obs_results_chor{1,obs_count}(v).avg_thickness_total') num2cell(obs_results_tot{1,obs_count}(v).size_of_bin_total')];
+                data_compiled_1 = [data_compiled_1; file_name num2cell(obs_results_tot{1,obs_count}(v).locations_total') num2cell(obs_results_tot{1,obs_count}(v).avg_thickness_total') num2cell(obs_results_chor{1,obs_count}(v).avg_thickness_total') num2cell(obs_results_in{1,obs_count}(v).avg_thickness_total') num2cell(obs_results_out{1,obs_count}(v).avg_thickness_total') num2cell(obs_results_tot{1,obs_count}(v).size_of_bin_total')];
             end
 
         end
