@@ -6,7 +6,8 @@
 % can be used with the thickness extractor in a separate step
 % 
 % Requirements: LUT file with the filenames and lateral scale
-% information (px/deg, mpp)
+% information (px/deg, mpp). If you do not have this, select cancel when
+% prompted and a new LUT will be generated from this script.
 %
 % Inputs: prompt for LUT file, prompt for unit selection, prompt
 % to select "seed" on image of approximate 0 (center of the ONH)
@@ -42,6 +43,9 @@ catch
     new_lut = 1;   
     LUT = table(FileName, AxialScale, LateralScale, Seed);
 end
+
+% Need to check what kind of data is in the directory and set a flag to
+% operate accordingly - JG generalize
 
 % Get directory of just the .mat files
 data_dir_mat = dir(fullfile(data_dir_path, '*.mat'));
@@ -92,14 +96,14 @@ for j=1: length(missing_from_LUT)
         elseif indx_unit == 3
             vert(j) = 5.4076;
         elseif indx_unit == 4
-            m = 'Please enter the axial(vertical) scale in umpp: ';
+            m = 'Please enter the axial(vertical) scale in microns per pixel: ';
             temp = inputdlg(m);
             vert(j) = str2double(temp{1});
         end
     end
     
     % Prompt user to enter the lateral scale
-    m = 'Please enter the lateral scale in deg/px: ';
+    m = 'Please enter the lateral scale in pixel per degree: ';
     temp2 = inputdlg(m);
     lat(j) = str2double(temp2{1});
 
@@ -113,7 +117,7 @@ end
 LUT_new = [LUT; cellstr(data)];
   
 % Save LUT
-writetable(LUT_new, fullfile(data_dir_path, "Seed_LUT.csv"));  
+writetable(LUT_new, fullfile(data_dir_path, strcat("Seed_LUT_", string(datetime('now','TimeZone','local','Format','yyyyMMdd')), ".csv")));  
 
 
 
